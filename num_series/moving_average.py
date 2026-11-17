@@ -1,31 +1,51 @@
-from typing import List, Sequence
+from typing import Sequence
+
 
 def check_window(window: int, n: int) -> None:
-    """Окно — целое >= 1 и не больше длины ряда."""
-    if isinstance(window, bool) or not isinstance(window, int):
-        raise ValueError(
-            f"window должно быть целым числом (получено: {window!r})"
-        )
+    """Window — целое >= 1; window <= n (иначе окно больше ряда)."""
     if window < 1:
-        raise ValueError(
-            f"window должно быть >= 1 (получено: {window})"
-        )
+        raise ValueError("Размер окна должен быть целым числом >= 1")
     if window > n:
-        raise ValueError(
-            f"окно ({window}) больше ряда ({n})"
-        )
+        raise ValueError("Размер окна не может превышать длину ряда")
 
-def simple_moving_average(data: Sequence[float],
-                          window: int) -> List[float]:
-    """SMA через бегущую сумму (O(n))."""
-    n = len(data)
-    if n == 0:
-        raise ValueError("Ряд пуст: расчёт SMA невозможен")
-    check_window(window, n)
+
+def simple_moving_average(data: Sequence[float], window: int) -> list:
+    """SMA через бегущую сумму, O(n). Длина результата: len(data) - window + 1."""
+    if len(data) == 0:
+        raise ValueError("Ряд пуст: расчёт скользящей средней невозможен")
+    check_window(window, len(data))
 
     running = sum(data[:window])
     result = [running / window]
-    for i in range(window, n):
+    for i in range(window, len(data)):
         running += data[i] - data[i - window]
         result.append(running / window)
+    return result
+
+
+def centered_moving_average(data: Sequence[float], window: int) -> list:
+    """Центрированная скользящая средняя: окно нечётное, выход выровнен по центру."""
+    if len(data) == 0:
+        raise ValueError("Ряд пуст: расчёт центрированной скользящей средней невозможен")
+    check_window(window, len(data))
+    if window % 2 == 0:
+        raise ValueError("Окно должно быть нечётным")
+
+    half = window // 2
+    return [
+        sum(data[i - half:i + half + 1]) / window
+        for i in range(half, len(data) - half)
+    ]
+
+
+def exponential_moving_average(data: Sequence[float], alpha: float) -> list:
+    """EMA: EMA[0] = data[0]; EMA[i] = alpha * data[i] + (1 - alpha) * EMA[i-1]."""
+    if len(data) == 0:
+        raise ValueError("Ряд пуст: расчёт экспоненциальной скользящей средней невозможен")
+    if not (0 < alpha <= 1):
+        raise ValueError("Коэффициент alpha должен быть в диапазоне (0, 1]")
+
+    result = [float(data[0])]
+    for x in data[1:]:
+        result.append(alpha * x + (1 - alpha) * result[-1])
     return result
