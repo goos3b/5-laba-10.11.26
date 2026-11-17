@@ -39,3 +39,17 @@ def summarize(data: Sequence[float]) -> Dict[str, float]:
         "min": float(min(data)),
         "max": float(max(data)),
     }
+import json
+from pathlib import Path
+from typing import Any, Union
+
+PathLike = Union[str, Path]
+
+def save_to_json(data: dict, path: PathLike) -> None:
+    """Сохраняет словарь в JSON-файл с корректным кодированием и отступами."""
+    path = Path(path)
+    # Гарантируем существование папки (создаст output/, если нет)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)

@@ -1,5 +1,3 @@
-
-
 from .generator import random_series, sine_series, trend_series
 from .stats import mean, median, spread, summarize
 from .moving_average import (
@@ -7,6 +5,8 @@ from .moving_average import (
     centered_moving_average,
     exponential_moving_average,
 )
+
+from .io__json import save_series_to_json, load_series_from_json
 
 __all__ = [
     # генерация
@@ -17,6 +17,9 @@ __all__ = [
     "simple_moving_average",
     "centered_moving_average",
     "exponential_moving_average",
+    # работа с JSON (новые функции)
+    "save_series_to_json",
+    "load_series_from_json",
 ]
 
 __version__ = "1.0.0"
