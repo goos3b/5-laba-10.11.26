@@ -58,3 +58,9 @@ def trend_series(n: int,
         start + step * i + (rng.uniform(-noise, noise) if noise else 0.0)
         for i in range(n)
     ]
+def uniform_series(n: int, low: float = 0.0, high: float = 100.0, seed: int | None = None) -> List[float]:
+    """Равномерное распределение [low, high)."""
+    if n < 0:
+        raise ValueError(f"n должен быть >= 0, получено: {n}")
+    rng = random.Random(seed)
+    return [ rng.uniform(low, high) for _ in range(n) ]

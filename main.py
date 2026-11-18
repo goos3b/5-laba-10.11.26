@@ -1,16 +1,11 @@
 from __future__ import annotations
-
 import argparse
 import sys
 from datetime import datetime 
 from typing import List
-
 from num_series import (
-    random_series, sine_series, trend_series,
-    mean, median, spread, summarize,
-    simple_moving_average, centered_moving_average, exponential_moving_average,
-    save_series_to_json, load_series_from_json
-)
+    random_series, sine_series, trend_series, uniform_series, summarize,
+    simple_moving_average, benchmark_moving_average, centered_moving_average, exponential_moving_average)
 try:
     from num_series.stats import save_to_json
     HAS_SAVE_TO_JSON = True
@@ -25,12 +20,9 @@ def build_series(kind: str, n: int, seed: int) -> List[float]:
         return sine_series(n, amplitude=10, frequency=2, noise=1.5, seed=seed)
     if kind == "trend":
         return trend_series(n, start=0, step=1.0, noise=0.5, seed=seed)
-    raise ValueError(f"Неизвестный тип ряда: {kind!r}")
-
-
-# -------------------------------------------------------------------
-# Печать
-# -------------------------------------------------------------------
+    if kind == "uniform":
+        return uniform_series(n, low=0.0, high=100.0, seed=seed)
+    raise ValueError (f"Неизвестный тип ряда: {kind!r}")
 
 def print_series(title: str, values: List[float], fmt: str = "{:>10.3f}") -> None:
     """Печатает ряд в одну строку с выравниванием."""
@@ -54,9 +46,11 @@ def print_header(kind: str, n: int) -> None:
 def print_stats(stats: dict) -> None:
     """Печатает блок базовых статистических показателей."""
     print(f"Среднее арифметическое : {stats['mean']:>10.4f}")
-    print(f"Медиана       : {stats['median']:>10.4f}")
-    print(f"Размах (max - min) : {stats['spread']:>10.4f}")
-    print(f"min / max    : {stats['min']:>10.4f} / {stats['max']:.4f}")
+    print(f"Медиана: {stats['median']:>10.4f}")
+    print(f"Размах (max - min) : {stats['range']:>10.4f}")
+    print(f"min / max: {stats['min']:>10.4f} / {stats['max']:.4f}")
+    print(f"Дисперсия: {stats['variance']:>10.4f}")
+    print(f"СКО: {stats['stdev']:>10.4f}")
 
 
 def print_footer() -> None:
@@ -73,7 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--kind", choices=["random", "sine", "trend"], default="sine",
+      "--kind", choices=["random", "sine", "trend", "uniform"], default="sine",
         help="тип генерируемого ряда",
     )
     parser.add_argument(
@@ -104,6 +98,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--save", action="store_true",
         help="сохранить полный результат в output/result.json",
     )
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Замерить время выполнения SMA для list и deque",
+    )
+
     return parser
 
 
@@ -144,10 +144,6 @@ def safe_save_to_json(payload: dict, filename: str) -> bool:
         return False
 
 
-# -------------------------------------------------------------------
-# main
-# -------------------------------------------------------------------
-
 def main(argv: List[str] | None = None) -> int:
     """Точка входа. Возвращает код выхода (0 — успех, 1 — ошибка)."""
     args = build_parser().parse_args(argv)
@@ -158,14 +154,12 @@ def main(argv: List[str] | None = None) -> int:
         stats = summarize(data)
         
         sma = simple_moving_average(data, args.window)
-        ema = exponential_moving_average(data, args.alpha)
+        alpha = 2.0 / (args.window + 1.0)
+        ema = exponential_moving_average(data, alpha)
         
-        cma = (
-            centered_moving_average(data, args.window)
+        cma = (centered_moving_average(data, args.window)
             if args.window % 2 == 1 else None
         )
-
-        # 2. Сборка итогового словаря (только внутри try, где данные уже есть)
         result = {
             "kind": args.kind,
             "n": args.n,
@@ -177,21 +171,18 @@ def main(argv: List[str] | None = None) -> int:
             "cma": cma
         }
 
-        # 3. Сохранение в JSON файл (если пользователь попросил флагом --save)
         if args.save:
             if safe_save_to_json(result, "output/result.json"):
                 print("Готово! Данные сохранены в output/result.json")
 
         # 4. Вывод в консоль в формате JSON (если пользователь попросил флагом --json)
         if args.json:
-            export_json(result)
-            # Если нужен только JSON, можно завершить здесь, но оставим вывод статистики ниже, если не указано иное
-            # return 0 
+            export_json(result) 
 
     except ValueError as err:
         # Понятное сообщение вместо «сырого» трейсбека
-        print(f"Ошибка: {err}.", file=sys.stderr)
-        return 1
+         print(f"Ошибка: {err}.", file=sys.stderr) 
+         return 1    
     except Exception as err:
         # Ловим любые другие неожиданные ошибки
         print(f"Критическая ошибка: {err}.", file=sys.stderr)
@@ -207,10 +198,15 @@ def main(argv: List[str] | None = None) -> int:
     
     if cma is not None:
         print_series(f"Центрированное MA (window={args.window})", cma)
-
+    if args.benchmark:
+        print("=" * 60)
+        print("Замер времени выполнения SMA (среднее за 1000 повторов):")
+        timings = benchmark_moving_average(data, args.window, repeats=1000)
+        print(f"  list : {timings['list']:.8f} с")
+        print(f"  deque: {timings['deque']:.8f} с")
+        print(f"  отличие (list/deque): {timings['list']/timings['deque']:.2f}")
     print_footer()
 
-    # 6. Экспорт в CSV
     if args.export:
         try:
             export_csv(data, args.export)
@@ -220,7 +216,5 @@ def main(argv: List[str] | None = None) -> int:
             return 1
 
     return 0
-
-
 if __name__ == "__main__":
     raise SystemExit(main())
