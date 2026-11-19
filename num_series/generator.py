@@ -64,3 +64,16 @@ def uniform_series(n: int, low: float = 0.0, high: float = 100.0, seed: int | No
         raise ValueError(f"n должен быть >= 0, получено: {n}")
     rng = random.Random(seed)
     return [ rng.uniform(low, high) for _ in range(n) ]
+def stock_price_series(n: int, start_price: float = 100.0, seed: int | None = None) -> list[float]:
+    """Генерирует ряд «цену акции» (случайное блуждание).
+    
+    p[0] = start_price; p[i] = p[i-1] * (1 + uniform(-0.02, 0.02)).
+    """
+    _validate_n(n)  # если у вас есть такая функция в generator.py
+    rng = random.Random(seed)
+    
+    prices = [start_price]
+    for _ in range(1, n):
+        change = rng.uniform(-0.02, 0.02)
+        prices.append(prices[-1] * (1 + change))
+    return prices

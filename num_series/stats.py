@@ -27,7 +27,7 @@ def median(data: Sequence[float]) -> float:
     return (s[k - 1] + s[k]) / 2.0
 
 
-def range(data: Sequence[float]) -> float:
+def spread(data: Sequence[float]) -> float:
     """Размах ряда: max - min."""
     _ensure_not_empty(data)
     return float(max(data) - min(data))
@@ -56,9 +56,22 @@ def summarize(data):
     return {
         "mean": mean(data),
         "median": median(data),
-        "range": range(data),
-        "variance": variance(data),
-        "stdev": stdev(data), 
-        "min": min(data),
-        "max": max(data),
+        "count":len(data),
+        "spread":spread(data),
+        "min":min(data),
+        "max":max(data)
     }
+def max_drawdown(data: Sequence[float]) -> float:
+    """Максимальная просадка: максимальное падение от локального максимума к минимуму."""
+    _ensure_not_empty(data)  # ваша функция проверки на пустоту
+    max_so_far = data[0]
+    max_dd = 0.0
+    
+    for x in data:
+        if x > max_so_far:
+            max_so_far = x
+        dd = max_so_far - x
+        if dd > max_dd:
+            max_dd = dd
+            
+    return float(max_dd)
